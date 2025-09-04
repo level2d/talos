@@ -1,0 +1,61 @@
+ .scan-result {
+    padding: 16px;
+    margin-top: 8px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.scan-result.found {
+    background-color: rgba(232, 245, 233, 0.2);
+    backdrop-filter: blur(6px);
+}
+
+.scan-result.not-found {
+    background-color: rgba(255, 235, 238, 0.2);
+    backdrop-filter: blur(6px);
+}
+
+.result-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.result-link, .search-button {
+    background-color: rgb(15, 111, 70);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.search-button {
+    background-color: rgb(15, 111, 70);
+}
+
+.result-barcode {
+    font-size: 14px;
+    color: #fff;
+    margin-bottom: 4px;
+    opacity: 0.8;
+    fon-weight: normal;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.rescan-button {
+    background-color: rgb(0, 0, 0);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
