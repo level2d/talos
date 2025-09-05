@@ -1,15 +1,261 @@
-/* embedded_1.js */
-(function () {
-    'use strict';
+function loadZXingAndRun(callback) {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/@zxing/browser@latest';
+    script.async = true;
 
-    function start() {
-        console.log('3D Scanner script started');
+    script.onload = function () {
+        console.log('ZXing library loaded successfully');
+        if (typeof callback === 'function') {
+            callback();
+        }
+    };
+
+    script.onerror = function () {
+        console.error('Failed to load ZXing library');
+    };
+
+    document.head.appendChild(script);
+}
+
+loadZXingAndRun(function () {
+    console.log("ZXing library loaded.");
+
+    const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+
+    const videoContainer = document.getElementById('video-container');
+    const video = document.getElementById('video');
+    const resultDiv = document.getElementById('result');
+    const debugDiv = document.getElementById('debug');
+    let stream;
+    let isProcessingEnabled = true; // Flag to control whether new codes are processed
+
+    function debugLog(message) {
+        debugDiv.textContent = message;
     }
 
-    // Run immediately if DOM is ready; otherwise wait
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start, { once: true });
-    } else {
-        start();
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(function (mediaStream) {
+            stream = mediaStream;
+            video.srcObject = stream;
+            video.setAttribute("playsinline", true);
+            video.play();
+            startScanning();
+            animateScan();
+            //enableTapToFocus();
+            //enableUniversalFocus();
+        })
+        .catch(function (err) {
+            debugLog('Error accessing the camera: ' + err.message);
+        });
+
+    function animateScan() {
+        const scanner = document.getElementById('scanner');
+        const qrCode = document.getElementById('qrCode');
+        const barcode = document.getElementById('barcode');
+        const scanLine = document.getElementById('scanLine');
+
+        let isQRCode = true;
+
+        scanLine.setAttribute('y', '-5');
+        scanLine.animate(
+            [
+                { transform: 'translateY(0)' },
+                { transform: 'translateY(200px)' }
+            ],
+            {
+                duration: 2000,
+                iterations: 1,
+                fill: 'forwards',
+                easing: 'ease-in'
+            }
+        ).onfinish = () => {
+            setTimeout(() => {
+                isQRCode = !isQRCode;
+                qrCode.setAttribute('visibility', isQRCode ? 'visible' : 'hidden');
+                barcode.setAttribute('visibility', isQRCode ? 'hidden' : 'visible');
+                animateScan();
+            }, 1000);
+        };
     }
-})();
+
+    function createCodeUrlMapper() {
+        // Dynamically build the mapping from DOM
+        const codeToUrlMap = {};
+        const itemElements = document.querySelectorAll('.item-data');
+        
+        itemElements.forEach(item => {
+            const title = item.querySelector('.item-title').textContent;
+            const barcode = item.querySelector('.item-barcode').textContent;
+            const url = item.querySelector('.item-url').textContent;
+            
+            codeToUrlMap[barcode] = {
+                title: title,
+                url: url
+            };
+        });
+        
+        // Debug log the generated map
+        console.log('Generated barcode map:', codeToUrlMap);
+
+        // Function to handle navigation based on scanned code
+        function handleCodeNavigation(scannedCode) {
+            // If processing is disabled, ignore this scan
+            if (!isProcessingEnabled) {
+                return false;
+            }
+            
+            // Clear any previous result UI
+            clearResultUI();
+            
+            if (scannedCode in codeToUrlMap) {
+                const itemData = codeToUrlMap[scannedCode];
+                debugLog('Found item: ' + itemData.title);
+                
+                // Disable processing of new codes until user clicks rescan
+                isProcessingEnabled = false;
+                
+                // Create clickable result element
+                const resultElement = document.createElement('div');
+                resultElement.className = 'scan-result found';
+                
+                // Add barcode value above title
+                const barcodeElement = document.createElement('div');
+                barcodeElement.className = 'result-barcode';
+                barcodeElement.textContent = 'Barcode: ' + scannedCode;
+                
+                const titleElement = document.createElement('div');
+                titleElement.className = 'result-title';
+                titleElement.textContent = itemData.title;
+                
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'button-container';
+                
+                const linkElement = document.createElement('button');
+                linkElement.className = 'result-link';
+                linkElement.textContent = 'View Item';
+                linkElement.addEventListener('click', () => {
+                    window.location.href = itemData.url;
+                });
+                
+                const rescanButton = document.createElement('button');
+                rescanButton.className = 'rescan-button';
+                rescanButton.textContent = 'Rescan';
+                rescanButton.addEventListener('click', () => {
+                    // Re-enable processing of new codes
+                    isProcessingEnabled = true;
+                    clearResultUI();
+                    debugLog("Ready to scan again");
+                });
+                
+                buttonContainer.appendChild(linkElement);
+                buttonContainer.appendChild(rescanButton);
+                
+                resultElement.appendChild(barcodeElement);
+                resultElement.appendChild(titleElement);
+                resultElement.appendChild(buttonContainer);
+                
+                // Add to the page
+                resultDiv.innerHTML = '';
+                resultDiv.appendChild(resultElement);
+                return true;
+            } else {
+                debugLog('No item found for code: ' + scannedCode);
+                
+                // Disable processing of new codes until user clicks rescan
+                // isProcessingEnabled = false;
+                
+                // Create "not found" element
+                const notFoundElement = document.createElement('div');
+                notFoundElement.className = 'scan-result not-found';
+                
+                // Add barcode value above message
+                const barcodeElement = document.createElement('div');
+                barcodeElement.className = 'result-barcode';
+                barcodeElement.textContent = 'Barcode: ' + scannedCode;
+                
+                const messageElement = document.createElement('div');
+                messageElement.className = 'not-found-message';
+                messageElement.textContent = 'Cannot locate item';
+                
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'button-container';
+                
+                const searchButton = document.createElement('button');
+                searchButton.className = 'search-button';
+                searchButton.textContent = 'Search';
+                searchButton.addEventListener('click', () => {
+                    window.location.href = '/items';
+                });
+                
+                const rescanButton = document.createElement('button');
+                rescanButton.className = 'rescan-button';
+                rescanButton.textContent = 'Rescan';
+                rescanButton.addEventListener('click', () => {
+                    isProcessingEnabled = true;
+                    clearResultUI();
+                    debugLog("Ready to scan again");
+                });
+
+                buttonContainer.appendChild(searchButton);
+                buttonContainer.appendChild(rescanButton);
+                
+                notFoundElement.appendChild(barcodeElement);
+                notFoundElement.appendChild(messageElement);
+                notFoundElement.appendChild(buttonContainer);
+                
+                // Add to the page
+                resultDiv.innerHTML = '';
+                resultDiv.appendChild(notFoundElement);
+                return false;
+            }
+        }
+        
+        // Helper function to clear previous result UI
+        function clearResultUI() {
+            if (resultDiv) {
+                resultDiv.innerHTML = '';
+            }
+        }
+
+        return handleCodeNavigation;
+    }
+
+    // Integrate with your existing scan function
+    function startScanning() {
+        const navigateByCode = createCodeUrlMapper();
+        
+        // Enable processing of new codes
+        isProcessingEnabled = true;
+        
+        // Start the scanner - we don't need to stop/restart it anymore
+        codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
+            try {
+                if (result && isProcessingEnabled) {  // Only process if enabled
+                    const scannedText = result.text;
+                    debugLog('Successfully scanned a ' + result.format + ' code');
+                    
+                    // Try to navigate based on the scanned code
+                    navigateByCode(scannedText);
+                } else if (err) {
+                    // Avoid logging common/expected errors
+                    if (
+                        isProcessingEnabled && // Only log errors if processing is enabled
+                        (!err.name ||
+                        !['NotFoundException', 'ChecksumException', 'FormatException'].includes(err.name))
+                    ) {
+                        debugLog('Scan error: ' + (err.message || err));
+                        console.warn('ZXing scan error:', err);
+                    }
+                }
+            } catch (ex) {
+                debugLog('Unexpected error during scan: ' + (ex.message || ex));
+                console.error('Critical scan exception:', ex);
+            }
+        });
+
+        debugLog("Scanner started");
+    }
+    
+    // Initialize the scanner on page load
+    startScanning();
+});

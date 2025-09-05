@@ -1,0 +1,68 @@
+(function () {
+  const REPO = "level2d/talos"; 
+  const FILES = [
+    { type: "css", path: "3d-scanner-script.css" },   
+    { type: "js",  path: "3d-scanner-script.js" },  
+  ];
+
+  const cacheKey = "triptych-web:sha";
+  const cacheTTLms = 10 * 60 * 200; // only re-check GitHub every 10 minutes
+
+  function urlWithSha(sha, path) {
+    return 'https://cdn.jsdelivr.net/gh/' + REPO + '@' + sha + '/' + path;
+  }
+
+  function loadAssets(sha) {
+    FILES.forEach(f => {
+      if (f.type === "css") {
+        const l = document.createElement("link");
+        l.rel = "stylesheet";
+        l.href = urlWithSha(sha, f.path);
+        document.head.appendChild(l);
+      } else {
+        const s = document.createElement("script");
+        s.defer = true;
+        s.src = urlWithSha(sha, f.path);
+        document.body.appendChild(s);
+      }
+    });
+  }
+
+  function loadFallbackMain() {
+    // last resort (should be rare)
+    FILES.forEach(f => {
+      const base = 'https://cdn.jsdelivr.net/gh/' + REPO + '@main/' + f.path;
+      if (f.type === "css") {
+        const l = document.createElement("link");
+        l.rel = "stylesheet";
+        l.href = base + "?t=" + Date.now();
+        document.head.appendChild(l);
+      } else {
+        const s = document.createElement("script");
+        s.defer = true;
+        s.src = base + "?t=" + Date.now();
+        document.body.appendChild(s);
+      }
+    });
+  }
+
+  const now = Date.now();
+  const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+  if (cached && (now - cached.when) < cacheTTLms && cached.sha) {
+    loadAssets(cached.sha);
+    return;
+  }
+
+  fetch("https://api.github.com/repos/" + REPO + "/commits/main", { cache: "no-store" })
+    .then(r => r.json())
+    .then(d => {
+      const sha = (d && d.sha) ? d.sha : null;
+      if (!sha) throw new Error("No SHA");
+      sessionStorage.setItem(cacheKey, JSON.stringify({ sha, when: now }));
+      loadAssets(sha);
+    })
+    .catch(() => {
+      // fallback path if GitHub API is rate-limited or offline
+      loadFallbackMain();
+    });
+})();
