@@ -18,7 +18,7 @@ function loadZXingAndRun(callback) {
 }
 
 loadZXingAndRun(function () {
-    console.log("ZXing library loaded.");
+    console.log("ZXing library loaded. Dynamically from github.");
 
     const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
 
