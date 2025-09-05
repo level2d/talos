@@ -69,9 +69,11 @@
     bottom: 16px;
     left: 16px;
     background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
     color: white;
-    padding: 8px;
-    border-radius: 4px;
+    padding: 6px;
+    border-radius: 8px;
+    font-family: monospace;
     font-size: 12px;
     max-height: 280px;
     overflow-y: auto;
